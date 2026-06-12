@@ -161,6 +161,8 @@ for (i in names(contrasts)){
 }
 
 
+
+
 # sanity check
 plotCounts(dds, gene="ENSG00000179388", intgroup="sort", normalized = TRUE)
 
@@ -288,14 +290,12 @@ contrasts_to_plot <- c(
 
 volcano_plots <- list()
 
-# -----------------------------
-# loop through contrasts
-# -----------------------------
+# looping through contrasts
 for (i in contrasts_to_plot) {
   
   res <- as.data.frame(results_ashr[[i]])
   
-  # clean gene labels (YOU ALREADY HAVE THEM)
+  # clean gene labels 
   res$gene_label <- res$external_gene_name
   
   # fallback safety
@@ -304,7 +304,7 @@ for (i in contrasts_to_plot) {
   # fix NA padj
   res$padj[is.na(res$padj)] <- 1
   
-  # DEBUG: confirm genes exist
+  # confirm genes exist
   print(intersect(genes_of_interest, res$gene_label))
   
   p <- EnhancedVolcano(
@@ -325,23 +325,39 @@ for (i in contrasts_to_plot) {
     
     arrowheads = TRUE,
     boxedLabels = TRUE,
-    labSize = 5,
-    maxoverlapsConnectors = 200,
-    
+    labSize = 7,
+    maxoverlapsConnectors = Inf,
     title = i
-  )
+  ) 
   
   volcano_plots[[i]] <- p
 }
 
-volcano_plots[[1]]
+
+ggsave(
+  "volcano_plot_1.pdf",
+  volcano_plots[[1]],
+  width = 12,
+  height = 8
+)
+
+
+# excel sheets
+library(openxlsx)
+
+for (nm in names(results_wald)) {
+  write.xlsx(
+    results_wald[[nm]],
+    file = here("output", paste0(nm, ".xlsx")),
+    overwrite = TRUE
+  )
+}
+
+a <- data.frame(results_wald[[1]])
 
 
 
-
-
-
-
+#######
 
 genes_of_interest <- c("KLF2", "EBF1", "EGR3")
 
@@ -357,34 +373,32 @@ for (i in contrasts_to_plot) {
   
   res <- as.data.frame(results_ashr[[i]])
   
-  # ALWAYS ensure ENSG is row
+  #ensuring ENSG is row
   res$row <- rownames(res)
   
-  # SAFE: force character
+  #force character
   res$external_gene_name <- as.character(res$external_gene_name)
   
-  # fallback mapping (IMPORTANT FIX)
+  #fallback mapping 
   res$gene_label <- ifelse(
     is.na(res$external_gene_name) | res$external_gene_name == "",
     res$row,
     res$external_gene_name
   )
   
-  # clean whitespace (VERY IMPORTANT)
+  #clean whitespace 
   res$gene_label <- trimws(res$gene_label)
   
   res$padj[is.na(res$padj)] <- 1
   
-  # -----------------------------
-  # DEBUG (THIS WILL TELL US IF IT WORKS)
-  # -----------------------------
+  
+  #DEBUG 
+ 
   cat("\nContrast:", i, "\n")
   print(genes_of_interest %in% res$gene_label)
   print(intersect(genes_of_interest, res$gene_label))
   
-  # -----------------------------
-  # label genes
-  # -----------------------------
+  #label genes
   label_genes <- unique(c(
     genes_of_interest,
     res$gene_label[order(res$padj)][1:10]
